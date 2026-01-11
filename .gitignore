@@ -103,6 +103,12 @@ modules.order
 /PKGBUILD
 /pacman/
 
+# Nix files (make clean-nixos-vm) (make dirty-nixos-vm)
+#
+/nixos.qcow2
+/result*
+/scripts/package/nixos-vm.nix
+
 #
 # We don't want to ignore the following even if they are dot-files
 #

@@ -158,6 +158,26 @@ pacman-pkg:
 		KBUILD_REVISION="$(shell $(srctree)/scripts/build-version)" \
 		makepkg $(MAKEPKGOPTS)
 
+# clean-nixos-pkg dirty-nixos-pkg
+# ---------------------------------------------------------------------------
+
+PHONY += clean-nixos-pkg dirty-nixos-pkg
+clean-nixos-pkg: BUILD_KERNEL_WITH_NIX = true
+dirty-nixos-pkg: BUILD_KERNEL_WITH_NIX = false
+clean-nixos-pkg: OPT_BUILD_CMD =
+dirty-nixos-pkg: OPT_BUILD_CMD = $(Q)$(MAKE) all
+clean-nixos-pkg: linux.tar.gz
+clean-nixos-pkg dirty-nixos-pkg:
+	$(OPT_BUILD_CMD)
+	cp -f $(srctree)/scripts/package/nixos-vm.nix.in $(srctree)/scripts/package/nixos-vm.nix
+	sed -i 's@version = "KERNELVERSION";@version = "$(KERNELVERSION)";@g' $(srctree)/scripts/package/nixos-vm.nix
+	sed -i 's@modDirVersion = "KERNELRELEASE";@modDirVersion = "$(KERNELRELEASE)";@g' $(srctree)/scripts/package/nixos-vm.nix
+	sed -i 's@kernelUtsMachine = "UTS_MACHINE";@kernelUtsMachine = "$(UTS_MACHINE)";@g' $(srctree)/scripts/package/nixos-vm.nix
+	sed -i 's@kernelArch = "ARCH";@kernelArch = "$(ARCH)";@g' $(srctree)/scripts/package/nixos-vm.nix
+	sed -i 's@crossCompile = "CROSS_COMPILE";@crossCompile = "$(CROSS_COMPILE)";@g' $(srctree)/scripts/package/nixos-vm.nix
+	nix-build --show-trace --max-jobs 1 --arg buildKernelWithNix $(BUILD_KERNEL_WITH_NIX) -A config.system.build.vm --out-link $(srctree)/result $(srctree)/scripts/package/nixos-vm.nix
+	$(srctree)/result/bin/run-nixos-vm
+
 # dir-pkg tar*-pkg - tarball targets
 # ---------------------------------------------------------------------------
 
@@ -258,6 +278,10 @@ help:
 	@echo '  snap-pkg            - Build only the binary kernel snap package'
 	@echo '                        (will connect to external hosts)'
 	@echo '  pacman-pkg          - Build only the binary kernel pacman package'
+	@echo '  clean-nixos-pkg     - Build the binary kernel in the Nix sandbox and'
+	@echo '                        run a NixOS VM with that kernel'
+	@echo '  dirty-nixos-pkg     - Copy the prebuilt kernel into a Nix package and'
+	@echo '                        run a NixOS VM with that kernel'
 	@echo '  dir-pkg             - Build the kernel as a plain directory structure'
 	@echo '  tar-pkg             - Build the kernel as an uncompressed tarball'
 	@echo '  targz-pkg           - Build the kernel as a gzip compressed tarball'
